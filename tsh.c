@@ -304,7 +304,7 @@ void do_bgfg(char **argv)
         temp = atoi(&argv[1][1]);
         if(!(job = getjobjid(jobs, temp)))
         {
-            printf("(%s) Job does not exist\n", argv[1]);
+            printf("(%s) No such job\n", argv[1]);
             return;
         }
     }
@@ -312,7 +312,7 @@ void do_bgfg(char **argv)
         pid_t pid = atoi(argv[1]);
 
         if(!(job= getjobpid(jobs, pid))){
-            printf("(%d) Process does not exist\n",pid);
+            printf("(%d) No such process\n",pid);
             return;
         }
     }
@@ -376,17 +376,14 @@ void sigint_handler(int sig)
 {
     pid_t pid = fgpid(jobs);
 
-    /*struct job_t *jobf;
-    jobf = getjobpid(jobs, pid);*/
-
-    int jid = pid2jid(pid);
-
+    //if found a process
     if (pid != 0)
     {
+        int jid = pid2jid(pid);
         //if job is found, kill process then delete
-            printf("[%d](%d) Terminated by sig%d\n", jid, pid, sig);
-            kill(-pid, SIGINT);
-            deletejob(jobs,pid);
+        printf("[%d](%d) terminated by signal %d\n", jid, pid, sig);
+         kill(-pid, SIGINT);
+        deletejob(jobs, pid);
     }
 }
 
@@ -398,17 +395,18 @@ void sigint_handler(int sig)
 void sigtstp_handler(int sig) 
 {
     pid_t pid = fgpid(jobs);
-    struct job_t *jobf;
-    jobf = getjobpid(jobs, pid);
+    if(0 == pid) return;
 
-    int jid = pid2jid(pid);
+    struct job_t *jobf = getjobpid(jobs, pid);
+
     //if found a process
     if (pid != 0)
     {
+        int jid = pid2jid(pid);
         //kill the process
-        printf("[%d](%d) stopped by sign%d\n", jid, pid,sig);
+        printf("[%d](%d) stopped by signal %d\n", jid, pid, sig);
         kill(-pid, SIGKILL);
-        jobf->state=ST;
+        jobf->state = ST;
     }
 }
 
