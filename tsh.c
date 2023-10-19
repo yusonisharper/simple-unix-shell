@@ -178,7 +178,7 @@ void eval(char *cmdline)
             setpgid(0, 0); 
             if (execvp(argv[0], argv) < 0)
             {
-                printf("Command not found: %s\n", argv[0]);
+                printf("%s: Command not found\n", argv[0]);
                 exit(0);
             }
         } 
@@ -293,7 +293,7 @@ int builtin_cmd(char **argv)
  */
 void do_bgfg(char **argv) 
 {
-    struct job_t *job;
+    struct job_t *job = NULL;
     int temp;
 
     if(argv[1] == NULL){
@@ -310,8 +310,7 @@ void do_bgfg(char **argv)
     }
     else{
         pid_t pid = atoi(argv[1]);
-
-        if(!(job= getjobpid(jobs, pid))){
+        if(!(job = getjobpid(jobs, pid))){
             printf("(%d) No such process\n",pid);
             return;
         }
@@ -332,6 +331,10 @@ void do_bgfg(char **argv)
             waitfg(job->pid);
         }
     }
+    else{
+        printf("do_bgfg: Internal error\n");
+        exit(0);
+    }
     return;
 }
 
@@ -340,7 +343,11 @@ void do_bgfg(char **argv)
  */
 void waitfg(pid_t pid)
 {
-    while (pid == fgpid(jobs)) sleep(0);
+    struct job_t *j = getjobpid(jobs, pid);
+    if(!j) return;
+    while (j->pid == pid && j->state == FG) 
+        sleep(1);
+    return;
 }
 
 /*****************
@@ -359,7 +366,7 @@ void sigchld_handler(int sig)
     int status;
     pid_t pid;
 
-    while ((pid = waitpid(fgpid(jobs), &status, WNOHANG|WUNTRACED)) >= 1)
+    while ((pid = waitpid(fgpid(jobs), &status, WNOHANG|WUNTRACED)) > 0)
     {
         if WIFEXITED(status) deletejob(jobs, pid);
         else if WIFSTOPPED(status) sigtstp_handler(2);
@@ -379,9 +386,8 @@ void sigint_handler(int sig)
     //if found a process
     if (pid != 0)
     {
-        int jid = pid2jid(pid);
         //if job is found, kill process then delete
-        printf("[%d](%d) terminated by signal %d\n", jid, pid, sig);
+        printf("Jobb (%d) terminated by signal %d\n", pid, sig);
          kill(-pid, SIGINT);
         deletejob(jobs, pid);
     }
